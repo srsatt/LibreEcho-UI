@@ -44,19 +44,20 @@ start_service() {
     [ -x "$DAEMON" ] || return 1
     mkdir -p "$(dirname "$PIDFILE")" "$(dirname "$LOGFILE")" "$(dirname "$STATUS_FILE")" || return 1
     rm -f "$PIDFILE" "$STATUS_FILE"
+    if [ "${STREAM_WAV:-0}" = 1 ]; then set -- --stream-wav; else set --; fi
     if command -v start-stop-daemon >/dev/null 2>&1; then
         start-stop-daemon -S -b -m -p "$PIDFILE" -x "$DAEMON" -- \
             --config "$CONFIG" --status-file "$STATUS_FILE" --port "$PORT" --bind "$BIND" \
             --wake-socket "$WAKE_SOCKET" --audio-socket "$AUDIO_SOCKET" --audio-bus "$AUDIO_BUS" \
             --mdns-socket "$MDNS_SOCKET" --tls-ca "$TLS_CA" \
             --radio-socket "$RADIO_SOCKET" --timer-socket "$TIMER_SOCKET" --led-socket "$LED_SOCKET" \
-            --privacy-state "$PRIVACY_STATE" --idme-root "$IDME_ROOT" </dev/null >>"$LOGFILE" 2>&1 || return 1
+            --privacy-state "$PRIVACY_STATE" --idme-root "$IDME_ROOT" "$@" </dev/null >>"$LOGFILE" 2>&1 || return 1
     else
         "$DAEMON" --config "$CONFIG" --status-file "$STATUS_FILE" --port "$PORT" --bind "$BIND" \
             --wake-socket "$WAKE_SOCKET" --audio-socket "$AUDIO_SOCKET" --audio-bus "$AUDIO_BUS" \
             --mdns-socket "$MDNS_SOCKET" --tls-ca "$TLS_CA" \
             --radio-socket "$RADIO_SOCKET" --timer-socket "$TIMER_SOCKET" --led-socket "$LED_SOCKET" \
-            --privacy-state "$PRIVACY_STATE" --idme-root "$IDME_ROOT" </dev/null >>"$LOGFILE" 2>&1 &
+            --privacy-state "$PRIVACY_STATE" --idme-root "$IDME_ROOT" "$@" </dev/null >>"$LOGFILE" 2>&1 &
         printf '%s\n' "$!" > "$PIDFILE"
     fi
     attempts=0

@@ -12,9 +12,15 @@ with tempfile.TemporaryDirectory(prefix='esphomed-init-',dir=os.environ.get('TMP
  try:
   run('start');run('status');status=json.loads((p/'status.json').read_text());assert status['ready'] is True and status['connected'] is False
   pid=int((p/'pid').read_text());assert pathlib.Path('/proc',str(pid),'exe').resolve()==pathlib.Path(BIN).resolve();assert status['pid']==pid
+  assert b'--stream-wav' not in pathlib.Path('/proc',str(pid),'cmdline').read_bytes()
   assert status['start_time']==pathlib.Path('/proc',str(pid),'stat').read_text().rsplit(')',1)[1].split()[19]
   assert status['listener_inode']!='0' and status['port']==port
   run('start');assert int((p/'pid').read_text())==pid  # ready restart is idempotent
+ finally:run('stop')
+ defaults=p/'esphomed-defaults';defaults.write_text('STREAM_WAV=1\n');env['DEFAULTS']=str(defaults)
+ try:
+  run('start');run('status');pid=int((p/'pid').read_text())
+  assert b'--stream-wav\0' in pathlib.Path('/proc',str(pid),'cmdline').read_bytes()
  finally:run('stop')
  assert not (p/'pid').exists() and not (p/'status.json').exists()
  try:s=socket.create_connection(('127.0.0.1',port),.1)

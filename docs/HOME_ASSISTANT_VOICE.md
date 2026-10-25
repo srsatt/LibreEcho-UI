@@ -43,6 +43,17 @@ TTS PCM instead of URL playback. The connection uses Noise; there is no legacy
 AuthRequest gate. Conversation continuation metadata is handled at `INTENT_END`,
 not `RUN_END`.
 
+URL playback can opt into progressive PCM WAV decoding with `STREAM_WAV=1` in
+`/etc/default/libreecho-esphomed` (or `--stream-wav` on the daemon). The default
+still downloads a complete response before playback. With the flag, PCM16 WAV
+at 8–48 kHz, mono or stereo, starts after 250 ms of audio is buffered (or the
+entire response for shorter clips); HTTP `Content-Length`, chunked and EOF
+framing are accepted. A 64 KiB PCM buffer bounds audio buffering regardless of response
+length. MP3 URLs continue through the finite 2 MiB download path. The flag does
+not advertise the ESPHome `SPEAKER` capability or change the HA media URL
+contract. Streaming requires the URL server to send WAV bytes before synthesis
+finishes; a pre-rendered HA media URL cannot reduce generation latency.
+
 These protocol contracts are host-verification targets, not a claim that this
 image has been deployed or acoustically tested. Protocol/framing, audio and
 media-event implementation are separate from the Web control-plane checks.

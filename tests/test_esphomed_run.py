@@ -42,6 +42,7 @@ with tempfile.TemporaryDirectory(prefix='esphomed-suite-',dir=scratch) as direct
   'noise':['tests/test_esphomed_noise.c','src/adapter/esphome_noise.c'],
   'url':['tests/test_esphomed_playback.c','src/adapter/esphome_playback.c','src/adapter/radio_resample.c'],
   'http':['tests/test_esphomed_http.c','src/adapter/radio_resample.c'],
+  'stream':['tests/test_esphomed_stream.c','src/adapter/radio_resample.c'],
   'pacing':['tests/test_esphomed_playback_pacing.c','src/adapter/radio_resample.c'],
   'queue':['tests/test_esphomed_queue.c']+common,
   'timer-lifecycle':['tests/test_esphomed_timer_lifecycle.c']+common,
