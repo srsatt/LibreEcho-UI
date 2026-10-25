@@ -84,7 +84,7 @@ static int stream_byte(struct esp_playback *p,unsigned char c){
  if(p->stream_kind==2){if(p->body_len>=ESP_PLAY_BODY_MAX)return -1;p->buffer[p->body_len++]=c;p->stream_body_seen++;return 0;}
  if(!p->stream_kind){p->wav_head[p->wav_head_len++]=c;p->stream_body_seen++;if(p->wav_head_len<4)return 0;
   if(memcmp(p->wav_head,"RIFF",4)){p->stream_kind=2;memcpy(p->buffer,p->wav_head,4);p->body_len=4;return 0;}p->stream_kind=1;return 0;}
- if(p->wav_data==1&&p->wav_data_size!=UINT32_MAX&&p->wav_data_received==p->wav_data_size)p->wav_data=2;
+ if(p->wav_data==1&&!p->wav_unknown_length&&p->wav_data_size!=UINT32_MAX&&p->wav_data_received==p->wav_data_size)p->wav_data=2;
  if(p->wav_data==2){if(p->wav_tail_left)p->wav_tail_left--;
   else{p->wav_tail_header[p->wav_tail_len++]=c;if(p->wav_tail_len==8){uint32_t len=u32(p->wav_tail_header+4);if(len==UINT32_MAX||len>ESP_PLAY_STREAM_MAX-p->stream_body_seen)return -1;p->wav_tail_left=(size_t)len+(len&1);p->wav_tail_len=0;}}
   p->stream_body_seen++;return 0;}
@@ -92,7 +92,10 @@ static int stream_byte(struct esp_playback *p,unsigned char c){
  if(p->wav_head_len>=sizeof p->wav_head)return -1;p->wav_head[p->wav_head_len++]=c;
  if(p->wav_head_len==12){if(memcmp(p->wav_head+8,"WAVE",4))return -1;p->wav_riff_size=u32(p->wav_head+4);p->wav_chunk_start=12;p->wav_chunk_end=20;}
  else if(p->wav_chunk_start&&p->wav_head_len==p->wav_chunk_start+8){size_t start=p->wav_chunk_start;uint32_t len=u32(p->wav_head+start+4);
-  if(!memcmp(p->wav_head+start,"data",4)){if(!p->wav_fmt)return -1;p->wav_data_size=len;p->wav_data=1;p->stream_body_seen++;return 0;}
+  if(!memcmp(p->wav_head+start,"data",4)){if(!p->wav_fmt)return -1;
+   /* HA's wave.open() emits this exact empty canonical header before live PCM. */
+   p->wav_unknown_length=len==0&&p->wav_riff_size==36&&start==36&&p->wav_head_len==44&&!memcmp(p->wav_head+12,"fmt ",4)&&u32(p->wav_head+16)==16;
+   p->wav_data_size=len;p->wav_data=1;p->stream_body_seen++;return 0;}
   if(len>sizeof p->wav_head-start-8-1)return -1;p->wav_chunk_end=start+8+len+(len&1);}
  if(p->wav_chunk_end&&p->wav_head_len==p->wav_chunk_end){size_t start=p->wav_chunk_start;uint32_t len=u32(p->wav_head+start+4);
   if(!memcmp(p->wav_head+start,"fmt ",4)){const unsigned char *b=p->wav_head+start+8;
@@ -105,8 +108,8 @@ static int stream_finish(struct esp_playback *p,uint64_t now){
  if(!p->stream_kind)return -1;if(p->fd>=0){close(p->fd);p->fd=-1;}p->stream_done=1;
  if(p->stream_kind==2){p->body_start=0;p->stream_wav=0;return prepare(p,now);}
  if(!p->wav_data||!p->wav_data_received||p->wav_data_received%(2*(unsigned)p->channels)||p->wav_tail_len||p->wav_tail_left)return -1;
- if(p->wav_data_size!=UINT32_MAX&&p->wav_data_received!=p->wav_data_size)return -1;
- if(p->wav_riff_size!=UINT32_MAX&&p->stream_body_seen!=(size_t)p->wav_riff_size+8)return -1;
+ if(!p->wav_unknown_length&&p->wav_data_size!=UINT32_MAX&&p->wav_data_received!=p->wav_data_size)return -1;
+ if(!p->wav_unknown_length&&p->wav_riff_size!=UINT32_MAX&&p->stream_body_seen!=(size_t)p->wav_riff_size+8)return -1;
  return 0;
 }
 /* Feed one bounded wire segment. A full PCM ring holds the current byte for

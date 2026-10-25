@@ -69,4 +69,14 @@ static void rejects(void){unsigned char wav[44+2400];make_wav(wav,1200);uint64_t
  now=0;peer=fetch();send_all(peer,head,strlen(head));chunk(peer,long_wav,44+16000);assert(!pump(&now,10)&&p.state==6&&p.frames>0);assert(shutdown(peer,SHUT_WR)==0);assert(pump(&now,3)==-1&&p.bus_fd==-1);close(peer);
  puts("malformed chunk/PCM and truncated framing before or after playback rejected: OK");
 }
-int main(void){const char *tmp=getenv("TMPDIR");assert(tmp&&*tmp);int n=snprintf(bus,sizeof bus,"%s/esphome-stream-XXXXXX",tmp);assert(n>0&&(size_t)n<sizeof bus);int fd=mkstemp(bus);assert(fd>=0&&close(fd)==0);early_chunked();assert(truncate(bus,0)==0);stereo_before_eof();assert(truncate(bus,0)==0);longer_than_finite_cap();assert(truncate(bus,0)==0);backpressure();assert(truncate(bus,0)==0);timeouts_and_cancel();assert(truncate(bus,0)==0);finite_and_eof();rejects();assert(unlink(bus)==0);return 0;}
+static void ha_wave_header(const char *path){static unsigned char wav[44+48000];FILE *f=fopen(path,"rb");assert(f);assert(fread(wav,1,44,f)==44&&fgetc(f)==EOF&&fclose(f)==0);
+ assert(!memcmp(wav,"RIFF",4)&&u32(wav+4)==36&&!memcmp(wav+8,"WAVEfmt ",8)&&u32(wav+16)==16&&!memcmp(wav+36,"data",4)&&u32(wav+40)==0);
+ for(size_t i=44;i<sizeof wav;i+=2){wav[i]=0xe8;wav[i+1]=3;}
+ uint64_t now=0;int peer=fetch();const char *h="HTTP/1.1 200 OK\r\n\r\n";send_all(peer,h,strlen(h));send_all(peer,wav,44+16000);assert(!pump(&now,20)&&p.state==6&&p.frames>0&&!p.stream_done&&p.wav_unknown_length);
+ for(size_t pos=44+16000;pos<sizeof wav;){size_t n=sizeof wav-pos;if(n>4096)n=4096;send_all(peer,wav+pos,n);pos+=n;assert(!pump(&now,2));}
+ assert(shutdown(peer,SHUT_WR)==0);assert(pump(&now,200)==1&&p.frames==48000);close(peer);
+ now=0;peer=fetch();send_all(peer,h,strlen(h));send_all(peer,wav,44);assert(shutdown(peer,SHUT_WR)==0);assert(pump(&now,5)==-1&&p.bus_fd==-1);close(peer);
+ now=0;peer=fetch();send_all(peer,h,strlen(h));send_all(peer,wav,45);assert(shutdown(peer,SHUT_WR)==0);assert(pump(&now,5)==-1&&p.bus_fd==-1);close(peer);
+ puts("actual Python wave empty header streams later PCM before EOF; empty/odd payload rejected: OK");
+}
+int main(int argc,char **argv){assert(argc==2);const char *tmp=getenv("TMPDIR");assert(tmp&&*tmp);int n=snprintf(bus,sizeof bus,"%s/esphome-stream-XXXXXX",tmp);assert(n>0&&(size_t)n<sizeof bus);int fd=mkstemp(bus);assert(fd>=0&&close(fd)==0);early_chunked();assert(truncate(bus,0)==0);stereo_before_eof();assert(truncate(bus,0)==0);longer_than_finite_cap();assert(truncate(bus,0)==0);backpressure();assert(truncate(bus,0)==0);timeouts_and_cancel();assert(truncate(bus,0)==0);finite_and_eof();rejects();assert(truncate(bus,0)==0);ha_wave_header(argv[1]);assert(unlink(bus)==0);return 0;}

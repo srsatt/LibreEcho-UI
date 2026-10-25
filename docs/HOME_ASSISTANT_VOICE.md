@@ -53,6 +53,8 @@ length. MP3 URLs continue through the finite 2 MiB download path. The flag does
 not advertise the ESPHome `SPEAKER` capability or change the HA media URL
 contract. Streaming requires the URL server to send WAV bytes before synthesis
 finishes; a pre-rendered HA media URL cannot reduce generation latency.
+The exact empty 44-byte PCM WAV header from HA's Python `wave.open()` is
+accepted as an unknown-length stream when audio bytes follow it.
 
 These protocol contracts are host-verification targets, not a claim that this
 image has been deployed or acoustically tested. Protocol/framing, audio and

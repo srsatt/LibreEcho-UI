@@ -4,7 +4,7 @@ Example: python tests/test_esphomed_run.py --tls-prefix /path/to/mbedtls \
 Full acceptance: omit --host-only, give --aio-python an already-approved pinned
 46.2.0 environment. --sanitize instruments all owned C with ASan/UBSan.
 """
-import argparse,os,pathlib,subprocess,sys,tempfile
+import argparse,os,pathlib,subprocess,sys,tempfile,wave
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 p=argparse.ArgumentParser();p.add_argument('--tls-prefix',required=True);p.add_argument('--host-only',action='store_true');p.add_argument('--sanitize',action='store_true');p.add_argument('--crypto-python',default=sys.executable);p.add_argument('--aio-python',default=sys.executable);p.add_argument('--fixture-namespace',action='store_true',help=argparse.SUPPRESS);a=p.parse_args()
 M=pathlib.Path(a.tls_prefix);scratch=pathlib.Path(os.environ.get('TMPDIR',ROOT/'build')).resolve();scratch.mkdir(parents=True,exist_ok=True)
@@ -56,6 +56,11 @@ with tempfile.TemporaryDirectory(prefix='esphomed-suite-',dir=scratch) as direct
   elif name=='idle':
    for case in ['quiet-owner-pinged','silent-owner-dropped','idle-disconnect-no-error-flash','active-turn-disconnect-flashes']:
     with tempfile.TemporaryDirectory(prefix='idle-',dir=d) as private:run([binary,case,private],env)
+  elif name=='stream':
+   header=d/'ha-empty.wav'
+   with wave.open(str(header),'wb') as wav:
+    wav.setnchannels(1);wav.setsampwidth(2);wav.setframerate(24000);wav.writeframes(b'')
+   run([binary,header],env)
   else:run([binary],env)
  run([sys.executable,'tests/test_esphome_ffmpeg_wav.py','--http-fixture',d/'http'],env)
  run([sys.executable,'tests/test_esphomed.py'],env)

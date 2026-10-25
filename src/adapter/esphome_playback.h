@@ -13,7 +13,7 @@
 #define ESP_PLAY_STREAM_BUFFER (64U*1024U)
 /* Single finite playback slot. tick does bounded nonblocking work. */
 struct esp_playback {
- int state,fd,bus_fd,tls,wav,header_done,result,dns_fd,chunked,stream_wav,stream_kind,stream_done,stream_blocked;
+ int state,fd,bus_fd,tls,wav,header_done,result,dns_fd,chunked,stream_wav,stream_kind,stream_done,stream_blocked,wav_unknown_length;
  unsigned port;char host[254],path[1024],bus[256],request[1536];size_t request_len,request_sent;
  unsigned char buffer[ESP_PLAY_BODY_MAX+8192];size_t received,body_start,body_len,expected,position;
  unsigned char wire[8192],stream_pcm[ESP_PLAY_STREAM_BUFFER],wav_head[1024];
